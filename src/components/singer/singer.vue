@@ -1,8 +1,9 @@
 <template>
   <div class="singer">
     <template v-if="singerList.length">
-      <list-view :data="singerList"></list-view>
+      <list-view @selectItem="handleSelectItem" :data="singerList"></list-view>
     </template>
+    <router-view></router-view>
   </div>
 </template>
 
@@ -11,6 +12,8 @@ import {getSingerList} from 'api/singer'
 import {ERR_OK} from 'api/config'
 import Singer from 'common/js/singer'
 import ListView from 'base/listview/listview'
+import {mapMutations} from 'vuex'
+
 const HOT_NAME = '热门'
 const HOT_SINGER_LEN = 10
 
@@ -25,6 +28,10 @@ export default {
     ListView
   },
   methods: {
+    handleSelectItem (item) {
+      this.$router.push(`/singer/${item.id}`)
+      this.setSinger(item)
+    },
     _getSingerList () {
       getSingerList()
         .then(res => {
@@ -43,9 +50,8 @@ export default {
       list.forEach((item, index) => {
         if (index < HOT_SINGER_LEN) {
           map.hot.items.push(new Singer({
-            id: item.Fsinger_id,
-            singerName: item.Fsinger_name,
-            avatar: item.Fsinger_mid
+            id: item.Fsinger_mid,
+            singerName: item.Fsinger_name
           }))
         }
         const key = item.Findex
@@ -56,9 +62,8 @@ export default {
           }
         }
         map[key].items.push(new Singer({
-          id: item.Fsinger_id,
-          singerName: item.Fsinger_name,
-          avatar: item.Fsinger_mid
+          id: item.Fsinger_mid,
+          singerName: item.Fsinger_name
         }))
       })
       // 对map的key值排序
@@ -76,7 +81,10 @@ export default {
         return x.title.charCodeAt(0) - y.title.charCodeAt(0)
       })
       return hot.concat(ret)
-    }
+    },
+    ...mapMutations({
+      setSinger: 'SET_SINGER'
+    })
   },
   mounted () {
     this._getSingerList()

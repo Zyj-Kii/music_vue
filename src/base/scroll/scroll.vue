@@ -20,6 +20,16 @@ export default {
     listenScroll: {
       type: Boolean,
       default: false
+    },
+    data: {
+      type: Array,
+      default: function () {
+        return []
+      }
+    },
+    refreshDelay: {
+      type: Number,
+      default: 20
     }
   },
   methods: {
@@ -51,6 +61,13 @@ export default {
           this.$emit('scroll', pos)
         })
       }
+    }
+  },
+  watch: {
+    data () {
+      setTimeout(() => {
+        this.refresh()
+      }, this.refreshDelay)
     }
   },
   mounted () {

@@ -17,6 +17,7 @@
                     <li
                         v-for="(item, key) of group.items"
                         class="list-group-item"
+                        @click="handleSelectItem(item)"
                         :key="key">
                         <img class="avatar" v-lazy="item.avatar"/>
                         <span class="name">{{item.singerName}}</span>
@@ -105,6 +106,9 @@ export default {
           this.timer = null
         }, 100)
       }
+    },
+    handleSelectItem (item) {
+      this.$emit('selectItem', item)
     },
     handleScroll (pos) {
       this.scrollY = pos.y
