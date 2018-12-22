@@ -1,3 +1,6 @@
+import {getLyric} from 'api/song'
+import {ERR_OK} from 'api/config'
+import {Base64} from 'js-base64'
 export default class Song {
   constructor ({id, mid, singer, songName, album, duration, image}) {
     this.id = id
@@ -8,6 +11,26 @@ export default class Song {
     this.duration = duration
     this.image = image
     this.url = ''
+  }
+  getLyric () {
+    if (!this.lyric) {
+      return new Promise((resolve, reject) => {
+        getLyric(this.mid)
+          .then(res => {
+            if (res.code === ERR_OK) {
+              this.lyric = Base64.decode(res.lyric)
+              resolve(this.lyric)
+            } else {
+              this.lyric = 'none'
+              reject(new Error('no lyric'))
+            }
+          })
+      })
+    } else if (this.lyric !== 'none') {
+      return Promise.resolve(this.lyric)
+    } else {
+      return Promise.reject(new Error('no lyric'))
+    }
   }
 }
 

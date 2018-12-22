@@ -25,11 +25,11 @@ export function getData (el, name, val) {
 let elementStyle = document.createElement('div').style
 let vendor = (() => {
   let transformNames = {
-    standard: 'transform',
     webkit: 'webkitTransform',
     Moz: 'MozTransform',
     O: 'OTransform',
-    ms: 'msTransform'
+    ms: 'msTransform',
+    standard: 'transform'
   }
   for (let key in transformNames) {
     if (elementStyle[transformNames[key]] !== undefined) {

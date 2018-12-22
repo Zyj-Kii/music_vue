@@ -16,7 +16,8 @@ module.exports = {
         secure: false,
         pathRewrite: {
           '/api/getDiscList': '/splcloud/fcgi-bin/fcg_get_diss_by_tag.fcg',
-          '/api/getSongVKey': '/base/fcgi-bin/fcg_music_express_mobile3.fcg'
+          '/api/getSongVKey': '/base/fcgi-bin/fcg_music_express_mobile3.fcg',
+          '/api/getLyric': '/lyric/fcgi-bin/fcg_query_lyric_new.fcg'
         },
         headers: {
           referer: 'https://c.y.qq.com/',

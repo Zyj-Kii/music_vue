@@ -25,6 +25,18 @@
                             </div>
                         </div>
                     </div>
+                    <scroll class="middle-r" ref="lyricList">
+                        <div class="lyric-wrapper">
+                            <div v-if="currentLyric">
+                                <p
+                                    ref="lyricLine"
+                                    class="text"
+                                    v-for="(line, key) of currentLyric.lines"
+                                    :class="{'current': currentLineNumber === key}"
+                                    :key="key">{{line.txt}}</p>
+                            </div>
+                        </div>
+                    </scroll>
                 </div>
                 <div class="bottom">
                     <div class="progress-wrapper">
@@ -87,6 +99,7 @@
             preload="auto"
             @error="handlePlayError"
             @timeupdate="updateTime"
+            @ended="handleMusicEnd"
             :src="songSource ? songSource : 'http://forbidden/'"></audio>
     </div>
 </template>
@@ -94,6 +107,7 @@
 <script>
 import ProgressBar from 'base/progress-bar/progress-bar'
 import ProgressCircle from 'base/progress-circle/progress-circle'
+import Scroll from 'base/scroll/scroll'
 import {playMode} from 'common/js/config'
 import {mapGetters, mapMutations, mapActions} from 'vuex'
 import animations from 'create-keyframe-animation'
@@ -101,7 +115,7 @@ import * as types from '@/store/mutation-types'
 import {prefixStyle} from 'common/js/dom'
 import detect from 'common/js/detect'
 import {shuffle} from 'common/js/util'
-
+import Lyric from 'lyric-parser'
 const transform = prefixStyle('transform')
 
 export default {
@@ -110,7 +124,9 @@ export default {
     return {
       onReady: false,
       currentTime: 0,
-      realSong: null
+      realSong: null,
+      currentLyric: null,
+      currentLineNumber: 0
     }
   },
   methods: {
@@ -139,6 +155,11 @@ export default {
       }
     },
     handlePlay (direction) {
+      if (this.playMode === playMode.loop) {
+        this.audio.currentTime = 0
+        this.audio.play()
+        return
+      }
       if (!this.onReady) {
         return
       }
@@ -182,6 +203,7 @@ export default {
           }, i * 100)
         }
       }
+      this.audio.currentTime = 0
       this.onReady = false
     },
     handlePercentChange (percent) {
@@ -207,6 +229,21 @@ export default {
         return item.id === this.realSong.id
       })
       this.setCurrentIndex(index)
+    },
+    handleMusicEnd () {
+      this.handlePlay('next')
+    },
+    getLyric () {
+      this.realSong.getLyric()
+        .then(lyric => {
+          this.currentLyric = new Lyric(lyric, this.handleLyric)
+          if (this.playing) {
+            this.currentLyric.play()
+          }
+        })
+    },
+    handleLyric ({lineNum, txt}) {
+      this.currentLineNumber = lineNum
     },
     format (time) {
       time = time | 0
@@ -348,6 +385,14 @@ export default {
       if (newSong !== 'persistSong') {
         this.realSong = newSong
       }
+    },
+    realSong () {
+      this.$nextTick(() => {
+        this.getLyric()
+      })
+    },
+    currentLineNumber (newVal) {
+      console.log(newVal)
     }
   },
   mounted () {
@@ -358,7 +403,8 @@ export default {
   },
   components: {
     ProgressBar,
-    ProgressCircle
+    ProgressCircle,
+    Scroll
   }
 }
 </script>

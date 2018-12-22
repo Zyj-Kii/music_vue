@@ -6,7 +6,7 @@
       <h1 class="title">{{title}}</h1>
       <div class="bg-image" :style="bgStyle" ref="bgImage">
           <div class="play-wrapper">
-              <div class="play" v-show="showPlay">
+              <div @click="handlePlayRandom" class="play" v-show="showPlay">
                   <i class="icon-play"></i>
                   <span class="text">随机播放全部</span>
               </div>
@@ -82,27 +82,37 @@ export default {
       // iphone播放一定要用户交互，所以这里判断hack
       // 这里对于资源是否能够播放，给五次重新请求的机会
       if (this.isIphone) {
-        const timer = []
-        for (let i = 1; i <= 10; i++) {
-          timer[i] = setTimeout(() => {
-            this.audio.play()
-              .then(() => {
-                for (let j = i + 1; j <= 10; j++) {
-                  clearTimeout(timer[j])
-                }
-              })
-              .catch(() => {
-                if (i === 10) {
-                  alert('暂无版权')
-                  this.setPlayingState(false)
-                }
-              })
-          }, i * 100)
-        }
+        this._fixIphonePlayMusic()
+      }
+    },
+    handlePlayRandom () {
+      this.randomPlay(this.songs)
+      if (this.isIphone) {
+        this._fixIphonePlayMusic()
+      }
+    },
+    _fixIphonePlayMusic () {
+      const timer = []
+      for (let i = 1; i <= 10; i++) {
+        timer[i] = setTimeout(() => {
+          this.audio.play()
+            .then(() => {
+              for (let j = i + 1; j <= 10; j++) {
+                clearTimeout(timer[j])
+              }
+            })
+            .catch(() => {
+              if (i === 10) {
+                alert('暂无版权')
+                this.setPlayingState(false)
+              }
+            })
+        }, i * 100)
       }
     },
     ...mapActions([
-      'selectPlay'
+      'selectPlay',
+      'randomPlay'
     ]),
     ...mapMutations({
       setPlayingState: types.SET_PLAYING_STATE
