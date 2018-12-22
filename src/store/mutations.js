@@ -22,8 +22,21 @@ const mutations = {
   [types.SET_CURRENT_INDEX] (state, index) {
     state.currentIndex = index
   },
-  [types.SET_CURRENT_URL] (state, {filename, vkey}) {
-    state.playlist[state.currentIndex].url = `http://dl.stream.qqmusic.qq.com/${filename}?fromtag=38&guid=5931742855&vkey=${vkey}`
+  [types.SET_CURRENT_URL] (state, {filename, vkey, error}) {
+    if (error === 0) {
+      state.playlist[state.currentIndex].url = `http://dl.stream.qqmusic.qq.com/${filename}?fromtag=38&guid=5931742855&vkey=${vkey}`
+    } else {
+      state.playlist[state.currentIndex].url = ''
+    }
+  },
+  [types.SET_IPHONE] (state, flag) {
+    state.isIphone = flag
+  },
+  [types.SET_AUDIO] (state, audio) {
+    state.audio = audio
+  },
+  [types.SET_PERSIST_SONG] (state, flag) {
+    state.persistSong = flag
   }
 }
 

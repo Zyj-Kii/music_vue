@@ -8,10 +8,20 @@ export const playlist = state => state.playlist
 
 export const sequenceList = state => state.sequenceList
 
-export const mode = state => state.mode
+export const playMode = state => state.playMode
 
 export const currentIndex = state => state.currentIndex
 
 export const currentSong = (state) => {
-  return state.playlist[state.currentIndex] || {}
+  if (!state.persistSong) {
+    return state.playlist[state.currentIndex] || {}
+  } else {
+    return 'persistSong'
+  }
 }
+
+export const isIphone = state => state.isIphone
+
+export const audio = state => state.audio
+
+export const persistSong = state => state.persistSong

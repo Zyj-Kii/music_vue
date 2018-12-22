@@ -6,38 +6,47 @@
             @leave="leave"
             @after-leave="afterLeave"
             @enter="enter">
-            <div class="normal-player" v-show="fullScreen">
+            <div class="normal-player" v-if="realSong" v-show="fullScreen">
                 <div class="background">
-                    <img width="100%" height="100%" :src="currentSong.image">
+                    <img width="100%" height="100%" :src="realSong.image">
                 </div>
                 <div class="top">
                     <div class="back" @click="handleScreen(false)">
                         <i class="icon-back"></i>
                     </div>
-                    <h1 class="title">{{currentSong.songName}}</h1>
-                    <h2 class="subtitle">{{currentSong.singer}}</h2>
+                    <h1 class="title">{{realSong.songName}}</h1>
+                    <h2 class="subtitle">{{realSong.singer}}</h2>
                 </div>
                 <div class="middle">
                     <div class="middle-l">
                         <div class="cd-wrapper" ref="cdWrapper">
                             <div class="cd" :class="cdCls">
-                                <img class="image" :src="currentSong.image">
+                                <img class="image" :src="realSong.image">
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="bottom">
-                    <div class="operators">
-                        <div class="icon i-left">
-                            <i class="icon-sequence"></i>
+                    <div class="progress-wrapper">
+                        <span class="time time-l">{{format(currentTime)}}</span>
+                        <div class="progress-bar-wrapper">
+                            <progress-bar
+                                @percentChange="handlePercentChange"
+                                :percent="percent"></progress-bar>
                         </div>
-                        <div @click="handlePlay('prev')" class="icon i-left">
+                        <span class="time time-r">{{format(realSong.duration)}}</span>
+                    </div>
+                    <div class="operators">
+                        <div @click="changeMode" class="icon i-left">
+                            <i :class="iconMode"></i>
+                        </div>
+                        <div @click="handlePlay('prev')" :class="disableCls" class="icon i-left">
                             <i class="icon-prev"></i>
                         </div>
-                        <div class="icon i-center">
+                        <div class="icon i-center" :class="disableCls">
                             <i @click="togglePlaying" :class="playIcon"></i>
                         </div>
-                        <div @click="handlePlay('next')" class="icon i-right">
+                        <div @click="handlePlay('next')" :class="disableCls" class="icon i-right">
                             <i class="icon-next"></i>
                         </div>
                         <div class="icon i-right">
@@ -51,16 +60,21 @@
             <div
                 class="mini-player"
                 @click="handleScreen(true)"
+                v-if="realSong"
                 v-show="!fullScreen">
                 <div class="icon">
-                    <img :class="cdCls" width="40" height="40" :src="currentSong.image">
+                    <img :class="cdCls" width="40" height="40" :src="realSong.image">
                 </div>
                 <div class="text">
-                    <h2 class="name">{{currentSong.songName}}</h2>
-                    <p class="desc">{{currentSong.singer}}</p>
+                    <h2 class="name">{{realSong.songName}}</h2>
+                    <p class="desc">{{realSong.singer}}</p>
                 </div>
                 <div @click.stop="togglePlaying" class="control">
-                    <i :class="miniIcon"></i>
+                    <progress-circle
+                        :radius="32"
+                        :percent="percent">
+                        <i :class="miniIcon" class="icon-mini"></i>
+                    </progress-circle>
                 </div>
                 <div class="control">
                     <i class="icon-playlist"></i>
@@ -68,35 +82,69 @@
             </div>
         </transition>
         <audio
-            @loadstart="handlePlayMusic"
+            @canplay="handlePlayMusic"
             ref="audio"
-            :src="currentSong.url"></audio>
+            preload="auto"
+            @error="handlePlayError"
+            @timeupdate="updateTime"
+            :src="songSource ? songSource : 'http://forbidden/'"></audio>
     </div>
 </template>
 
 <script>
+import ProgressBar from 'base/progress-bar/progress-bar'
+import ProgressCircle from 'base/progress-circle/progress-circle'
+import {playMode} from 'common/js/config'
 import {mapGetters, mapMutations, mapActions} from 'vuex'
 import animations from 'create-keyframe-animation'
 import * as types from '@/store/mutation-types'
 import {prefixStyle} from 'common/js/dom'
+import detect from 'common/js/detect'
+import {shuffle} from 'common/js/util'
 
 const transform = prefixStyle('transform')
 
 export default {
   name: 'player',
+  data () {
+    return {
+      onReady: false,
+      currentTime: 0,
+      realSong: null
+    }
+  },
   methods: {
     handleScreen (flag) {
       this.setFullScreen(flag)
     },
     togglePlaying () {
       this.setPlayingState(!this.playing)
+      if (this.playing) {
+        this.handlePlayMusic()
+      }
     },
     handlePlayMusic () {
-      if (this.currentSong.url) {
-        this.$refs.audio.play()
+      this.onReady = true
+      this.audio.play()
+        .catch(() => {
+          this.setPlayingState(false)
+          alert('暂无版权')
+        })
+    },
+    handlePlayError (e) {
+      if (!this.isIphone && e.target.src) {
+        this.setPlayingState(false)
+        alert('暂无版权')
+        this.onReady = true
       }
     },
     handlePlay (direction) {
+      if (!this.onReady) {
+        return
+      }
+      if (!this.playing) {
+        this.setPlayingState(true)
+      }
       let index = this.currentIndex
       if (direction === 'next') {
         index += 1
@@ -110,10 +158,67 @@ export default {
         }
       }
       this.setCurrentIndex(index)
-      this.selectPlay({
-        list: this.playlist,
-        index: this.currentIndex
+
+      // iphone播放一定要用户交互，所以这里判断hack
+      // 这里对于资源是否能够播放，给十次重新请求的机会
+      if (this.isIphone) {
+        const timer = []
+        for (let i = 1; i <= 10; i++) {
+          timer[i] = setTimeout(() => {
+            this.audio.play()
+              .then(() => {
+                this.onReady = true
+                for (let j = i + 1; j <= 10; j++) {
+                  clearTimeout(timer[j])
+                }
+              })
+              .catch(() => {
+                if (i === 10) {
+                  alert('暂无版权')
+                  this.setPlayingState(false)
+                  this.onReady = true
+                }
+              })
+          }, i * 100)
+        }
+      }
+      this.onReady = false
+    },
+    handlePercentChange (percent) {
+      this.audio.currentTime = percent * this.realSong.duration
+      if (!this.playing) {
+        this.setPlayingState(true)
+      }
+    },
+    changeMode () {
+      const mode = (this.playMode + 1) % 3
+      this.setPlayMode(mode)
+      let list = null
+      if (mode === playMode.random) {
+        list = shuffle(this.sequenceList)
+      } else {
+        list = this.sequenceList
+      }
+      this.setPlaylist(list)
+      this.resetCurrentIndex(list)
+    },
+    resetCurrentIndex (list) {
+      let index = list.findIndex((item) => {
+        return item.id === this.realSong.id
       })
+      this.setCurrentIndex(index)
+    },
+    format (time) {
+      time = time | 0
+      const minute = (time / 60) | 0
+      let second = time % 60
+      if (second < 10) {
+        second = '0' + second
+      }
+      return `${minute}:${second}`
+    },
+    updateTime (e) {
+      this.currentTime = e.target.currentTime
     },
     enter (el, done) {
       const {x, y, scale} = this._getPosAndScale()
@@ -172,10 +277,15 @@ export default {
     ...mapMutations({
       setFullScreen: types.SET_FULL_SCREEN,
       setPlayingState: types.SET_PLAYING_STATE,
-      setCurrentIndex: types.SET_CURRENT_INDEX
+      setAudio: types.SET_AUDIO,
+      setIphone: types.SET_IPHONE,
+      setPlayMode: types.SET_PLAY_MODE,
+      setPlaylist: types.SET_PLAYLIST,
+      setPersistSong: types.SET_PERSIST_SONG
     }),
     ...mapActions([
-      'selectPlay'
+      'selectPlay',
+      'setCurrentIndex'
     ])
   },
   computed: {
@@ -185,22 +295,70 @@ export default {
     cdCls () {
       return this.playing ? 'play' : 'play pause'
     },
+    songSource () {
+      if (this.realSong && this.realSong.url !== '') {
+        return this.realSong.url
+      } else {
+        return ''
+      }
+    },
     miniIcon () {
       return this.playing ? 'icon-pause-mini' : 'icon-play-mini'
+    },
+    disableCls () {
+      return this.onReady ? '' : 'disable'
+    },
+    percent () {
+      return this.currentTime / this.realSong.duration
+    },
+    iconMode () {
+      switch (this.playMode) {
+        case playMode.sequence:
+          return 'icon-sequence'
+        case playMode.loop:
+          return 'icon-loop'
+        case playMode.random:
+          return 'icon-random'
+      }
     },
     ...mapGetters([
       'fullScreen',
       'playlist',
       'currentSong',
       'playing',
-      'currentIndex'
+      'currentIndex',
+      'isIphone',
+      'audio',
+      'playMode',
+      'sequenceList',
+      'persistSong'
     ])
   },
   watch: {
     playing (newPlaying) {
-      const audio = this.$refs.audio
-      newPlaying ? audio.play() : audio.pause()
+      const audio = this.audio
+      if (newPlaying) {
+        audio.play()
+          .catch()
+      } else {
+        audio.pause()
+      }
+    },
+    currentSong (newSong) {
+      if (newSong !== 'persistSong') {
+        this.realSong = newSong
+      }
     }
+  },
+  mounted () {
+    if (detect('iPhone')) {
+      this.setIphone(true)
+    }
+    this.setAudio(this.$refs.audio)
+  },
+  components: {
+    ProgressBar,
+    ProgressCircle
   }
 }
 </script>

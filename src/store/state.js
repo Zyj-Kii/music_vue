@@ -6,8 +6,11 @@ const state = {
   fullScreen: false,
   playlist: [],
   sequenceList: [],
-  mode: playMode.sequence,
-  currentIndex: -1
+  playMode: playMode.sequence,
+  currentIndex: -1,
+  isIphone: false,
+  audio: null,
+  persistSong: false
 }
 
 export default state

@@ -36,7 +36,8 @@ import SongList from 'base/song-list/song-list'
 import Scroll from 'base/scroll/scroll'
 import Loading from 'base/loading/loading'
 import {prefixStyle} from 'common/js/dom'
-import {mapActions} from 'vuex'
+import {mapActions, mapMutations, mapGetters} from 'vuex'
+import * as types from '@/store/mutation-types'
 
 const RESERVED_HEIGHT = 40
 const transform = prefixStyle('transform')
@@ -78,15 +79,40 @@ export default {
         list: this.songs,
         index
       })
+      // iphone播放一定要用户交互，所以这里判断hack
+      // 这里对于资源是否能够播放，给五次重新请求的机会
+      if (this.isIphone) {
+        const timer = []
+        for (let i = 1; i <= 10; i++) {
+          timer[i] = setTimeout(() => {
+            this.audio.play()
+              .then(() => {
+                for (let j = i + 1; j <= 10; j++) {
+                  clearTimeout(timer[j])
+                }
+              })
+              .catch(() => {
+                if (i === 10) {
+                  alert('暂无版权')
+                  this.setPlayingState(false)
+                }
+              })
+          }, i * 100)
+        }
+      }
     },
     ...mapActions([
       'selectPlay'
-    ])
+    ]),
+    ...mapMutations({
+      setPlayingState: types.SET_PLAYING_STATE
+    })
   },
   computed: {
     bgStyle () {
       return `background-image:url(${this.bgImage})`
-    }
+    },
+    ...mapGetters(['isIphone', 'audio'])
   },
   watch: {
     scrollY (newY) {

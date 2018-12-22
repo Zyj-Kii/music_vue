@@ -35,8 +35,8 @@ export function getSingerDetail (singerId) {
 export function getSongVKey (songmid) {
   const url = '/api/getSongVKey'
   const data = Object.assign({}, commonParams, {
-    loginUin: 3051522991,
-    uin: 3051522991,
+    loginUin: 1378383840,
+    uin: 1378383840,
     guid: 5931742855,
     songmid,
     cid: 205361747,

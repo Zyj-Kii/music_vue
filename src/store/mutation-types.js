@@ -13,3 +13,9 @@ export const SET_PLAY_MODE = 'SET_PLAY_MODE'
 export const SET_CURRENT_INDEX = 'SET_CURRENT_INDEX'
 
 export const SET_CURRENT_URL = 'SET_CURRENT_URL'
+
+export const SET_IPHONE = 'SET_IPHONE'
+
+export const SET_AUDIO = 'SET_AUDIO'
+
+export const SET_PERSIST_SONG = 'SET_PERSIST_SONG'
